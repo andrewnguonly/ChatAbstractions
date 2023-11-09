@@ -46,7 +46,6 @@ class ChatDynamic(BaseChatModel):
                 "the 'models' dict."
             )
 
-
         return values
 
     @property
