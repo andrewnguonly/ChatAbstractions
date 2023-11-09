@@ -13,7 +13,10 @@ gpt_4_model = ChatOpenAI(model="gpt-4")
 gpt_3_5_model = ChatOpenAI(model="gpt-3.5-turbo")
 
 # specify all models that can be selected in the ChatDynamic instance
-chat_load_balance_model = ChatLoadBalance(models=[gpt_4_model, gpt_3_5_model])
+chat_load_balance_model = ChatLoadBalance(
+    models=[gpt_4_model, gpt_3_5_model],
+    load_balance_type=1,
+)
 
 # create chat prompt
 chat_prompt = ChatPromptTemplate.from_messages([
