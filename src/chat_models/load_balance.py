@@ -80,6 +80,7 @@ class ChatLoadBalance(BaseChatModel):
 
         elif self.load_balance_type == 2:
             # TODO: least rate limited
+            # See https://github.com/langchain-ai/langchain/issues/9601
             raise NotImplementedError(
                 "Least rate limited load balancer is not implemented."
             )
