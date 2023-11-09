@@ -1,5 +1,5 @@
 # DynamicChatModel
-`DynamicChatModel` is a subclass of [LangChain's `BaseChatModel`](https://github.com/langchain-ai/langchain/blob/master/libs/langchain/langchain/chat_models/base.py). The implementation of `DynamicChatModel` demonstrates the ability to select a chat model at run time based on environment variable configuration. In the event of an outage or degraded performance by an LLM provider, this functionality may be desirable.
+`DynamicChatModel` is a subclass of [LangChain's `BaseChatModel`](https://github.com/langchain-ai/langchain/blob/master/libs/langchain/langchain/chat_models/base.py). The implementation of `DynamicChatModel` demonstrates the ability to select a chat model at runtime based on environment variable configuration. In the event of an outage or degraded performance by an LLM provider, this functionality (i.e. failover) may be desirable.
 
 ```python
 # set environment variable DYNAMIC_CHAT_MODEL_ID=gpt-4
