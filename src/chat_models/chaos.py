@@ -1,7 +1,8 @@
 import logging
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from croniter import croniter, CroniterBadCronError
+from croniter import croniter
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.base import BaseChatModel
 from langchain.pydantic_v1 import root_validator
@@ -20,7 +21,7 @@ class ChatChaos(BaseChatModel):
     enabled: bool
 
     # configure how often chaotic behavior should occur and for how long
-    cron_schedule: str
+    cron: croniter
     duration_mins: int = 1
     ratio: float = 0.01  # percentage of inferences that should be chaotic
 
@@ -32,20 +33,12 @@ class ChatChaos(BaseChatModel):
     @root_validator(pre=True)
     def validate_attrs(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         """Validate class attributes."""
-        cron_schedule = values.get("cron_schedule", "")
         duration_mins = values.get("duration_mins", 1)
         ratio = values.get("ratio", 0.01)
 
         enable_malformed_json = values.get("enable_malformed_json", False)
         enable_halucination = values.get("enable_halucination", False)
         enable_latency = values.get("enable_latency", False)
-
-        try:
-            croniter(cron_schedule)
-        except CroniterBadCronError:
-            raise ValueError(
-                "The 'cron' attribute must be a valid cron schedule."
-            )
         
         if duration_mins < 1:
             raise ValueError(
@@ -91,3 +84,14 @@ class ChatChaos(BaseChatModel):
             run_manager=run_manager,
             **kwargs,
         )
+    
+    def _in_cron_range(self, current_time: datetime) -> bool:
+        """Return True if current time is within cron start time and end time
+        (cron start + duration).
+        """
+        # Get the previous scheduled time
+        start_time = self.cron.get_prev(datetime)
+
+        # Check if the next scheduled time is within range
+        end_time = start_time + timedelta(minutes=self.duration_mins)
+        return start_time <= current_time <= end_time

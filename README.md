@@ -38,3 +38,9 @@ chat_load_balance_model = ChatLoadBalance(
 
 ```python
 ```
+
+# Running Tests
+
+Run the following command.
+
+        PYTHONPATH=src/ python3 -m unittest
