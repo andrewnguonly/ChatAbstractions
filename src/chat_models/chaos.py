@@ -1,5 +1,6 @@
 import logging
 import random
+import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
@@ -91,19 +92,40 @@ class ChatChaos(BaseChatModel):
                 "Chaotic behavior is enabled for this inference instance. "
                 f"Current time: {current_time}. Behavior: {behavior}."
             )
+
+            # some behaviors must be configured/setup prior to inference
+            if behavior == B_HALUCINATION:
+                pass
+            if behavior == B_LATENCY:
+                random_delay = random.uniform(30, 60)
+                logger.info(
+                    f"Behavior {B_LATENCY}: Delaying inference by "
+                    f"{random_delay} seconds."
+                )
+                time.sleep(random_delay)
+
+            # inference / call LLM
+            chat_result = self.model._generate(
+                messages=messages,
+                stop=stop,
+                run_manager=run_manager,
+                **kwargs,
+            )
+
+            # some behaviors must be configured/setup after inference
             if behavior == B_MALFORMED_JSON:
                 pass
-            elif behavior == B_HALUCINATION:
-                pass
-            elif behavior == B_LATENCY:
-                pass
 
-        return self.model._generate(
-            messages=messages,
-            stop=stop,
-            run_manager=run_manager,
-            **kwargs,
-        )
+        else:
+            # normal inference
+            chat_result = self.model._generate(
+                messages=messages,
+                stop=stop,
+                run_manager=run_manager,
+                **kwargs,
+            )
+
+        return chat_result
     
     def _in_cron_range(self, current_time: datetime) -> bool:
         """Return True if current time is within cron start time and end time
