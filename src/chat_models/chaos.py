@@ -1,4 +1,5 @@
 import logging
+import random
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
@@ -11,6 +12,12 @@ from langchain.schema.messages import BaseMessage
 
 
 logger = logging.getLogger(__name__)
+
+
+# chaotic behaviors
+B_MALFORMED_JSON = "malformed_json"
+B_HALUCINATION = "halucination"
+B_LATENCY = "latency"
 
 
 class ChatChaos(BaseChatModel):
@@ -77,6 +84,19 @@ class ChatChaos(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         """Generate chaotic behavior during inference."""
+        current_time = datetime.now()
+        if self._in_cron_range(current_time) and self._in_ratio_range():
+            behavior = self._select_behavior()
+            logger.info(
+                "Chaotic behavior is enabled for this inference instance. "
+                f"Current time: {current_time}. Behavior: {behavior}."
+            )
+            if behavior == B_MALFORMED_JSON:
+                pass
+            elif behavior == B_HALUCINATION:
+                pass
+            elif behavior == B_LATENCY:
+                pass
 
         return self.model._generate(
             messages=messages,
@@ -92,6 +112,22 @@ class ChatChaos(BaseChatModel):
         # Get the previous scheduled time
         start_time = self.cron.get_prev(datetime)
 
-        # Check if the next scheduled time is within range
+        # Check if the current time is within range
         end_time = start_time + timedelta(minutes=self.duration_mins)
         return start_time <= current_time <= end_time
+
+    def _in_ratio_range(self) -> bool:
+        """Return true is randomly selected number is below ratio value."""
+        return random.random() <= self.ratio
+
+    def _select_behavior(self) -> str:
+        """Randomly select behavior."""
+        enabled_behaviors = []
+        if self.enable_malformed_json:
+            enabled_behaviors.append(B_MALFORMED_JSON)
+        if self.enable_halucination:
+            enabled_behaviors.append(B_HALUCINATION)
+        if self.enable_latency:
+            enabled_behaviors.append(B_LATENCY)
+
+        return random.choice(enabled_behaviors)
