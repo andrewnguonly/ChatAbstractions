@@ -9,7 +9,7 @@ from croniter import croniter
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.base import BaseChatModel
 from langchain.pydantic_v1 import root_validator
-from langchain.schema import AIMessage, ChatGeneration, ChatResult
+from langchain.schema import AIMessage, ChatGeneration, ChatResult, HumanMessage
 from langchain.schema.messages import BaseMessage
 
 
@@ -26,6 +26,10 @@ J_BACKTICKS = "backticks"
 J_TRUNCATED = "truncated"
 J_SINGLE_QUOTES = "single_quotes"
 J_BEHAVIORS = [J_BACKTICKS, J_TRUNCATED, J_SINGLE_QUOTES]
+
+# latency behavior
+L_MIN = 30
+L_MAX = 60
 
 
 class ChatChaos(BaseChatModel):
@@ -44,6 +48,8 @@ class ChatChaos(BaseChatModel):
     enable_malformed_json: bool = False
     enable_halucination: bool = False
     enable_latency: bool = False
+
+    halucination_prompt: str = "Write a poem about the Python programming language."
 
     @root_validator(pre=True)
     def validate_attrs(cls, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -102,10 +108,16 @@ class ChatChaos(BaseChatModel):
 
             # some behaviors must be configured prior to inference
             if behavior == B_HALUCINATION:
-                pass
+                # manually add halucination prompt to messages
+                logger.info(
+                    f"Behavior {B_HALUCINATION}: Adding halucination prompt "
+                    f"'{self.halucination_prompt}' to messages."
+                )
+                messages = self._halucination_messages(messages)
+
             if behavior == B_LATENCY:
                 # manually add random delay
-                random_delay = random.uniform(30, 60)
+                random_delay = random.uniform(L_MIN, L_MAX)
                 logger.info(
                     f"Behavior {B_LATENCY}: Delaying inference by "
                     f"{random_delay} seconds."
@@ -167,6 +179,12 @@ class ChatChaos(BaseChatModel):
             enabled_behaviors.append(B_LATENCY)
 
         return random.choice(enabled_behaviors)
+    
+    def _halucination_messages(self, messages: List[BaseMessage]) -> List[BaseMessage]:
+        """Manually add halucination prompt to list of messages."""
+        last_message = messages[-1]
+        new_last_message_text = f"{last_message.content}\n\n{self.halucination_prompt}"
+        return messages[:-1] + [HumanMessage(content=new_last_message_text)]
 
     def _malform_generations(self, chat_result: ChatResult) -> ChatResult:
         """Manually malform ChatGenerations in ChatResult."""

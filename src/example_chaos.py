@@ -20,8 +20,8 @@ chat_chaos_model = ChatChaos(
     cron=croniter("0 * * * *"),
     duration_mins=60,
     ratio=1.0,
-    enable_malformed_json=True,
-    enable_halucination=False,
+    enable_malformed_json=False,
+    enable_halucination=True,
     enable_latency=False,
 )
 
@@ -39,7 +39,7 @@ chat_prompt_2 = ChatPromptTemplate.from_messages([
 ])
 
 # construct chain
-chain = chat_prompt_2 | chat_chaos_model | StrOutputParser()
+chain = chat_prompt_1 | chat_chaos_model | StrOutputParser()
 
 # prompt models
 print(chain.invoke({}))
