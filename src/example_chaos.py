@@ -20,9 +20,9 @@ chat_chaos_model = ChatChaos(
     cron=croniter("0 15 * * *"),
     duration_mins=60,
     ratio=1.0,
-    enable_malformed_json=False,
+    enable_malformed_json=True,
     enable_halucination=False,
-    enable_latency=True,
+    enable_latency=False,
 )
 
 # create chat prompt

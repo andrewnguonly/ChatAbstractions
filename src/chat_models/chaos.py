@@ -1,3 +1,4 @@
+import json
 import logging
 import random
 import time
@@ -8,7 +9,7 @@ from croniter import croniter
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.base import BaseChatModel
 from langchain.pydantic_v1 import root_validator
-from langchain.schema import ChatResult
+from langchain.schema import AIMessage, ChatGeneration, ChatResult
 from langchain.schema.messages import BaseMessage
 
 
@@ -19,6 +20,12 @@ logger = logging.getLogger(__name__)
 B_MALFORMED_JSON = "malformed_json"
 B_HALUCINATION = "halucination"
 B_LATENCY = "latency"
+
+# malformed JSON behaviors
+J_BACKTICKS = "backticks"
+J_TRUNCATED = "truncated"
+J_SINGLE_QUOTES = "single_quotes"
+J_BEHAVIORS = [J_BACKTICKS, J_TRUNCATED, J_SINGLE_QUOTES]
 
 
 class ChatChaos(BaseChatModel):
@@ -93,10 +100,11 @@ class ChatChaos(BaseChatModel):
                 f"Current time: {current_time}. Behavior: {behavior}."
             )
 
-            # some behaviors must be configured/setup prior to inference
+            # some behaviors must be configured prior to inference
             if behavior == B_HALUCINATION:
                 pass
             if behavior == B_LATENCY:
+                # manually add random delay
                 random_delay = random.uniform(30, 60)
                 logger.info(
                     f"Behavior {B_LATENCY}: Delaying inference by "
@@ -112,9 +120,15 @@ class ChatChaos(BaseChatModel):
                 **kwargs,
             )
 
-            # some behaviors must be configured/setup after inference
+            # some behaviors must be configured after inference
             if behavior == B_MALFORMED_JSON:
-                pass
+                # manually augment response to be malformed JSON
+                chat_result = self._malform_generations(chat_result)
+                logger.info(
+                    f"Behavior {B_MALFORMED_JSON}: Manually augmented"
+                    "ChatGenerations in ChatResult. Malformed JSON: "
+                    f"{chat_result.generations[0].text}"
+                )
 
         else:
             # normal inference
@@ -153,3 +167,31 @@ class ChatChaos(BaseChatModel):
             enabled_behaviors.append(B_LATENCY)
 
         return random.choice(enabled_behaviors)
+
+    def _malform_generations(self, chat_result: ChatResult) -> ChatResult:
+        """Manually malform ChatGenerations in ChatResult."""
+        malformed_generations = [
+            self._malform_generation(generation)
+            for generation in chat_result.generations
+        ]
+        chat_result.generations = malformed_generations
+        return chat_result
+
+    def _malform_generation(self, chat_generation: ChatGeneration) -> ChatGeneration:
+        """Manually malform ChatGeneration."""
+        try:
+            json.loads(chat_generation.text)
+        except json.JSONDecodeError:
+            # completion is already invalid JSON, so just return it
+            return chat_generation
+
+        # manually malform text
+        j_behavior = random.choice(J_BEHAVIORS)
+        if j_behavior == J_BACKTICKS:
+            message=AIMessage(content=f"```{chat_generation.text}```")
+        if j_behavior == J_TRUNCATED:
+            message=AIMessage(content=f"{chat_generation.text[:-1]}")
+        if j_behavior == J_SINGLE_QUOTES:
+            message=AIMessage(content=f"""{chat_generation.text.replace('"', "'")}""")
+
+        return ChatGeneration(message=message)
