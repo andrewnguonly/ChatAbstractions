@@ -37,10 +37,25 @@ chat_load_balance_model = ChatLoadBalance(
 `ChatChaos` is a subclass of [LangChain's `BaseChatModel`](https://github.com/langchain-ai/langchain/blob/v0.0.350/libs/core/langchain_core/language_models/chat_models.py). The implementation of `ChatChaos` demonstrates the ability to substitute normal LLM behavior with chaotic behavior. The purpose of this abstraction is to promote the [Principles of Chaos Engineering](https://principlesofchaos.org/) in the context of LLM applications. This abstraction is inspired by [Netflix's Chaos Monkey](https://github.com/Netflix/chaosmonkey).
 
 ```python
+# initialize chat model
+gpt_3_5_model = ChatOpenAI(model="gpt-3.5-turbo")
+
+# configure ChatChaos
+chat_chaos_model = ChatChaos(
+    model=gpt_3_5_model,
+    enabled=True,
+    cron=croniter("0 * * * *"),
+    duration_mins=60,
+    ratio=1.0,
+    enable_malformed_json=False,
+    enable_halucination=True,
+    enable_latency=False,
+    halucination_prompt="Write a poem about the Python programming language.",
+)
 ```
 
 # Running Tests
 
 Run the following command.
 
-        PYTHONPATH=src/ python3 -m unittest
+    PYTHONPATH=src/ python3 -m unittest
