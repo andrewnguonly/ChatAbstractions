@@ -92,8 +92,8 @@ class ChatChaos(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         """Generate chaotic behavior during inference."""
-        current_time = datetime.now()
-        if self._in_cron_range(current_time) and self._in_ratio_range():
+        current_time = datetime.utcnow()
+        if self.enabled and self._in_cron_range(current_time) and self._in_ratio_range():
             behavior = self._select_behavior()
             logger.info(
                 "Chaotic behavior is enabled for this inference instance. "
@@ -125,7 +125,7 @@ class ChatChaos(BaseChatModel):
                 # manually augment response to be malformed JSON
                 chat_result = self._malform_generations(chat_result)
                 logger.info(
-                    f"Behavior {B_MALFORMED_JSON}: Manually augmented"
+                    f"Behavior {B_MALFORMED_JSON}: Manually augmented "
                     "ChatGenerations in ChatResult. Malformed JSON: "
                     f"{chat_result.generations[0].text}"
                 )
