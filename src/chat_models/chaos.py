@@ -27,10 +27,6 @@ J_TRUNCATED = "truncated"
 J_SINGLE_QUOTES = "single_quotes"
 J_BEHAVIORS = [J_BACKTICKS, J_TRUNCATED, J_SINGLE_QUOTES]
 
-# latency behavior
-L_MIN = 30
-L_MAX = 60
-
 
 class ChatChaos(BaseChatModel):
     """Chat model abstraction that substitutes normal LLM behavior with
@@ -49,7 +45,10 @@ class ChatChaos(BaseChatModel):
     enable_halucination: bool = False
     enable_latency: bool = False
 
+    # behavior configurations
     halucination_prompt: str = "Write a poem about the Python programming language."
+    latency_min_sec: int = 30
+    latency_max_sec: int = 60
 
     @root_validator(pre=True)
     def validate_attrs(cls, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -99,7 +98,10 @@ class ChatChaos(BaseChatModel):
     ) -> ChatResult:
         """Generate chaotic behavior during inference."""
         current_time = datetime.utcnow()
-        if self.enabled and self._in_cron_range(current_time) and self._in_ratio_range():
+        if (self.enabled and
+            self._in_cron_range(current_time) and
+            self._in_ratio_range()
+        ):
             behavior = self._select_behavior()
             logger.info(
                 "Chaotic behavior is enabled for this inference instance. "
@@ -117,7 +119,10 @@ class ChatChaos(BaseChatModel):
 
             if behavior == B_LATENCY:
                 # manually add random delay
-                random_delay = random.uniform(L_MIN, L_MAX)
+                random_delay = random.uniform(
+                    self.latency_min_sec,
+                    self.latency_max_sec,
+                )
                 logger.info(
                     f"Behavior {B_LATENCY}: Delaying inference by "
                     f"{random_delay} seconds."
@@ -180,10 +185,15 @@ class ChatChaos(BaseChatModel):
 
         return random.choice(enabled_behaviors)
     
-    def _halucination_messages(self, messages: List[BaseMessage]) -> List[BaseMessage]:
+    def _halucination_messages(
+        self,
+        messages: List[BaseMessage],
+    ) -> List[BaseMessage]:
         """Manually add halucination prompt to list of messages."""
         last_message = messages[-1]
-        new_last_message_text = f"{last_message.content}\n\n{self.halucination_prompt}"
+        new_last_message_text = (
+            f"{last_message.content}\n\n{self.halucination_prompt}"
+        )
         return messages[:-1] + [HumanMessage(content=new_last_message_text)]
 
     def _malform_generations(self, chat_result: ChatResult) -> ChatResult:
@@ -195,7 +205,10 @@ class ChatChaos(BaseChatModel):
         chat_result.generations = malformed_generations
         return chat_result
 
-    def _malform_generation(self, chat_generation: ChatGeneration) -> ChatGeneration:
+    def _malform_generation(
+        self,
+        chat_generation: ChatGeneration,
+    ) -> ChatGeneration:
         """Manually malform ChatGeneration."""
         try:
             json.loads(chat_generation.text)
@@ -210,6 +223,8 @@ class ChatChaos(BaseChatModel):
         if j_behavior == J_TRUNCATED:
             message=AIMessage(content=f"{chat_generation.text[:-1]}")
         if j_behavior == J_SINGLE_QUOTES:
-            message=AIMessage(content=f"""{chat_generation.text.replace('"', "'")}""")
+            message=AIMessage(
+                content=f"""{chat_generation.text.replace('"', "'")}""",
+            )
 
         return ChatGeneration(message=message)
