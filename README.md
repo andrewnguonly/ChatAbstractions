@@ -48,9 +48,9 @@ chat_chaos_model = ChatChaos(
     duration_mins=60,
     ratio=1.0,
     enable_malformed_json=False,
-    enable_halucination=True,
+    enable_hallucination=True,
     enable_latency=False,
-    halucination_prompt="Write a poem about the Python programming language.",
+    hallucination_prompt="Write a poem about the Python programming language.",
 )
 ```
 
