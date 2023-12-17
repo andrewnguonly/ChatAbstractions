@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # chaotic behaviors
 B_MALFORMED_JSON = "malformed_json"
-B_HALUCINATION = "halucination"
+B_HALLUCINATION = "hallucination"
 B_LATENCY = "latency"
 
 # malformed JSON behaviors
@@ -42,11 +42,11 @@ class ChatChaos(BaseChatModel):
 
     # configure types of chaotic behavior
     enable_malformed_json: bool = False
-    enable_halucination: bool = False
+    enable_hallucination: bool = False
     enable_latency: bool = False
 
     # behavior configurations
-    halucination_prompt: str = "Write a poem about the Python programming language."
+    hallucination_prompt: str = "Write a poem about the Python programming language."
     latency_min_sec: int = 30
     latency_max_sec: int = 60
 
@@ -57,7 +57,7 @@ class ChatChaos(BaseChatModel):
         ratio = values.get("ratio", 0.01)
 
         enable_malformed_json = values.get("enable_malformed_json", False)
-        enable_halucination = values.get("enable_halucination", False)
+        enable_hallucination = values.get("enable_hallucination", False)
         enable_latency = values.get("enable_latency", False)
         
         if duration_mins < 1:
@@ -72,13 +72,13 @@ class ChatChaos(BaseChatModel):
         
         chaos_type_enabled = any([
             enable_malformed_json,
-            enable_halucination,
+            enable_hallucination,
             enable_latency,
         ])
         if not chaos_type_enabled:
             raise ValueError(
                 "At least one type of chaos must be enabled: "
-                "['enable_malformed_json', 'enable_halucination', "
+                "['enable_malformed_json', 'enable_hallucination', "
                 "'enable_latency']."
             )
 
@@ -109,13 +109,13 @@ class ChatChaos(BaseChatModel):
             )
 
             # some behaviors must be configured prior to inference
-            if behavior == B_HALUCINATION:
-                # manually add halucination prompt to messages
+            if behavior == B_HALLUCINATION:
+                # manually add hallucination prompt to messages
                 logger.info(
-                    f"Behavior {B_HALUCINATION}: Adding halucination prompt "
-                    f"'{self.halucination_prompt}' to messages."
+                    f"Behavior {B_HALLUCINATION}: Adding hallucination prompt "
+                    f"'{self.hallucination_prompt}' to messages."
                 )
-                messages = self._halucination_messages(messages)
+                messages = self._hallucination_messages(messages)
 
             if behavior == B_LATENCY:
                 # manually add random delay
@@ -178,21 +178,21 @@ class ChatChaos(BaseChatModel):
         enabled_behaviors = []
         if self.enable_malformed_json:
             enabled_behaviors.append(B_MALFORMED_JSON)
-        if self.enable_halucination:
-            enabled_behaviors.append(B_HALUCINATION)
+        if self.enable_hallucination:
+            enabled_behaviors.append(B_HALLUCINATION)
         if self.enable_latency:
             enabled_behaviors.append(B_LATENCY)
 
         return random.choice(enabled_behaviors)
     
-    def _halucination_messages(
+    def _hallucination_messages(
         self,
         messages: List[BaseMessage],
     ) -> List[BaseMessage]:
-        """Manually add halucination prompt to list of messages."""
+        """Manually add hallucination prompt to list of messages."""
         last_message = messages[-1]
         new_last_message_text = (
-            f"{last_message.content}\n\n{self.halucination_prompt}"
+            f"{last_message.content}\n\n{self.hallucination_prompt}"
         )
         return messages[:-1] + [HumanMessage(content=new_last_message_text)]
 

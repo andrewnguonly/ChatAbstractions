@@ -21,7 +21,7 @@ chat_chaos_model = ChatChaos(
     duration_mins=60,
     ratio=1.0,
     enable_malformed_json=False,
-    enable_halucination=True,
+    enable_hallucination=True,
     enable_latency=False,
 )
 
