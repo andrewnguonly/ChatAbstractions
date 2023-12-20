@@ -54,6 +54,8 @@ chat_chaos_model = ChatChaos(
 )
 ```
 
+# ChatNotDiamond
+
 # Running Tests
 
 Run the following command.
