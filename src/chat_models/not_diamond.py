@@ -5,9 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from langchain.callbacks.manager import CallbackManagerForLLMRun
-from langchain.chat_models.anthropic import ChatAnthropic
 from langchain.chat_models.base import BaseChatModel
-from langchain.chat_models.openai import ChatOpenAI
 from langchain.pydantic_v1 import root_validator
 from langchain.schema import ChatResult
 from langchain.schema.messages import BaseMessage
@@ -83,6 +81,12 @@ class ChatNotDiamond(BaseChatModel):
         )
 
         chat_model = self._get_chat_model(selected_model, estimated_tokens)
+        return chat_model._generate(
+            messages=messages,
+            stop=stop,
+            run_manager=run_manager,
+            **kwargs,
+        )
 
     def _get_messages(
         self,
