@@ -63,7 +63,11 @@ class ChatNotDiamond(BaseChatModel):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> ChatResult:
-        pass
+        """Call Not Diamond API to select model and route request to
+        selected model.
+        """
+        messages = self._get_messages(messages)
+        model, estimated_tokens = self._select_model(messages)
 
     def _get_messages(
         self,
@@ -83,7 +87,10 @@ class ChatNotDiamond(BaseChatModel):
             },
         ]
         """
-        pass
+        return [
+            {"role": message.type, "content": message.content}
+            for message in base_messages
+        ]
 
     def _select_model(self, messages: List[Dict[str, str]]) -> Tuple[str, int]:
         """Call Not Diamond API to select model.
