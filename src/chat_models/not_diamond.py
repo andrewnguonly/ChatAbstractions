@@ -36,12 +36,28 @@ class ChatNotDiamond(BaseChatModel):
     # reflects the available routing support in Not Diamond. In practice,
     # a client should specify token limit values smaller than the actual
     # maximum allowed value to give buffer for completion tokens.
+    #
+    # {
+    #     "gpt-3.5": {
+    #         4096: ChatOpenAI(model="gpt-3.5-turbo"),
+    #         16385: ChatOpenAI(model="gpt-3.5-turbo-16k"),
+    #     },
+    #     "gpt-4": {
+    #         8192: ChatOpenAI(model="gpt-4"),
+    #         32768: ChatOpenAI(model="gpt-4-32k"),
+    #         128000: ChatOpenAI(model="gpt-4-1106-preview"),
+    #     },
+    #     "claude-2.1": {
+    #         200000: ChatAnthropic(model="claude-2.1"),
+    #     },
+    # }
     model_map: Dict[str, Dict[int, BaseChatModel]]
 
     @root_validator(pre=True)
     def validate_attrs(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         """Validate class attributes."""
         fallback_model = values.get("fallback_model")
+        model_map = dict(values.get("model_map"))
 
         not_diamond_api_key = os.environ.get("NOT_DIAMOND_API_KEY")
         if not_diamond_api_key is None:
@@ -54,7 +70,10 @@ class ChatNotDiamond(BaseChatModel):
                 f"The 'fallback_model' attribute must be in {ND_MODELS}."
             )
         
-        # TODO: validate model_map keys
+        if not set(model_map.keys()).issubset(ND_MODELS):
+            raise ValueError(
+                f"The 'model_map' keys must be in {ND_MODELS}."
+            )
 
         return values
 
@@ -129,7 +148,7 @@ class ChatNotDiamond(BaseChatModel):
             "POST", url, headers=headers, data=payload
         ).json()
 
-        return (response["model"], response["estimated_tokens"])
+        return (response["model"], response["token_estimate"])
     
     def _get_chat_model(
         self,

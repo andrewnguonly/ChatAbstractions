@@ -5,10 +5,10 @@ from langchain.chat_models.openai import ChatOpenAI
 from langchain.schema.messages import HumanMessage, SystemMessage
 
 from chat_models.not_diamond import (
-    ChatNotDiamond, 
+    ChatNotDiamond,
+    ND_MODEL_CLAUDE_2_1,
     ND_MODEL_GPT_3_5,
     ND_MODEL_GPT_4,
-    ND_MODEL_CLAUDE_2_1,
 )
 
 
@@ -17,7 +17,7 @@ class TestChatNotDiamond(unittest.TestCase):
         self.maxDiff = None
 
         self.model = ChatNotDiamond(
-            fallback_model="gpt-3.5",
+            fallback_model=ND_MODEL_GPT_3_5,
             model_map={
                 ND_MODEL_GPT_3_5: {
                     4096: ChatOpenAI(model="gpt-3.5-turbo"),

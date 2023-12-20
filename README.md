@@ -55,6 +55,28 @@ chat_chaos_model = ChatChaos(
 ```
 
 # ChatNotDiamond
+`ChatNotDiamond` is a subclass of [LangChain's `BaseChatModel`](https://github.com/langchain-ai/langchain/blob/v0.0.350/libs/core/langchain_core/language_models/chat_models.py). The implementation of `ChatNotDiamond` demonstrates the ability leverage [Not Diamond's](https://www.notdiamond.ai/) optimized LLM routing functionality.
+
+```python
+# configure ChatNotDiamond
+chat_not_diamond = ChatNotDiamond(
+    fallback_model=ND_MODEL_GPT_3_5,
+    model_map={
+        ND_MODEL_GPT_3_5: {
+            4096: ChatOpenAI(model="gpt-3.5-turbo"),
+            16385: ChatOpenAI(model="gpt-3.5-turbo-16k"),
+        },
+        ND_MODEL_GPT_4: {
+            8192: ChatOpenAI(model="gpt-4"),
+            32768: ChatOpenAI(model="gpt-4-32k"),
+            128000: ChatOpenAI(model="gpt-4-1106-preview"),
+        },
+        ND_MODEL_CLAUDE_2_1: {
+            200000: ChatAnthropic(model="claude-2.1"),
+        },
+    }
+)
+```
 
 # Running Tests
 
