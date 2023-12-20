@@ -5,7 +5,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from langchain.callbacks.manager import CallbackManagerForLLMRun
+from langchain.chat_models.anthropic import ChatAnthropic
 from langchain.chat_models.base import BaseChatModel
+from langchain.chat_models.openai import ChatOpenAI
 from langchain.pydantic_v1 import root_validator
 from langchain.schema import ChatResult
 from langchain.schema.messages import BaseMessage
@@ -30,8 +32,13 @@ class ChatNotDiamond(BaseChatModel):
     
     https://notdiamond.readme.io/reference/modelselector
     """
-    models: List[str]
     fallback_model: str
+
+    # A client should specify their own model map. The default model map
+    # reflects the available routing support in Not Diamond. In practice,
+    # a client should specify token limit values smaller than the actual
+    # maximum allowed value to give buffer for completion tokens.
+    model_map: Dict[str, Dict[int, BaseChatModel]]
 
     @root_validator(pre=True)
     def validate_attrs(cls, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -48,6 +55,8 @@ class ChatNotDiamond(BaseChatModel):
             raise ValueError(
                 f"The 'fallback_model' attribute must be in {ND_MODELS}."
             )
+        
+        # TODO: validate model_map keys
 
         return values
 
@@ -66,8 +75,14 @@ class ChatNotDiamond(BaseChatModel):
         """Call Not Diamond API to select model and route request to
         selected model.
         """
-        messages = self._get_messages(messages)
-        model, estimated_tokens = self._select_model(messages)
+        formatted_msgs = self._get_messages(messages)
+        selected_model, estimated_tokens = self._select_model(formatted_msgs)
+        logger.info(
+            f"Selected model: {selected_model}, "
+            f"Estimated tokens: {estimated_tokens}",
+        )
+
+        chat_model = self._get_chat_model(selected_model, estimated_tokens)
 
     def _get_messages(
         self,
@@ -111,3 +126,20 @@ class ChatNotDiamond(BaseChatModel):
         ).json()
 
         return (response["model"], response["estimated_tokens"])
+    
+    def _get_chat_model(
+        self,
+        selected_model: str,
+        estimated_tokens: int,
+    ) -> BaseChatModel:
+        """Get BaseChatModel based on selected model from Not Diamond."""
+        default_token_mapping = self.model_map.get(self.fallback_model)
+        token_mapping = self.model_map.get(
+            selected_model,
+            default_token_mapping,
+        )
+
+        sorted_token_counts = sorted(token_mapping.keys())
+        for token_limit in sorted_token_counts:
+            if estimated_tokens <= token_limit:
+                return token_mapping[token_limit]
