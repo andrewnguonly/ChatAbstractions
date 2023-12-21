@@ -110,6 +110,12 @@ chat_not_diamond = ChatNotDiamond(
 )
 ```
 
+## Running Examples
+
+Run the following command.
+
+    python3 src/example_chaos.py
+
 ## Running Tests
 
 Run the following command.
