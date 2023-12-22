@@ -32,10 +32,8 @@ class ChatNotDiamond(BaseChatModel):
     """
     fallback_model: str
 
-    # A client should specify their own model map. The default model map
-    # reflects the available routing support in Not Diamond. In practice,
-    # a client should specify token limit values smaller than the actual
-    # maximum allowed value to give buffer for completion tokens.
+    # In practice, a client should specify token limit values smaller than 
+    # the actual maximum allowed value to give buffer for completion tokens.
     #
     # {
     #     "gpt-3.5": {
