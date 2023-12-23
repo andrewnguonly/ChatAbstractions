@@ -110,6 +110,8 @@ chat_not_diamond = ChatNotDiamond(
 )
 ```
 
+## ChatCustomRouter
+
 ## Running Examples
 
 Run the following command.
