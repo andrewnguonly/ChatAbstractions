@@ -1,7 +1,6 @@
 import random
 from typing import Any, List
 
-
 from langchain.chat_models.openai import ChatOpenAI
 from langchain.globals import set_debug
 from langchain.prompts.chat import ChatPromptTemplate
@@ -25,7 +24,18 @@ def evaluate_messages(messages: List[BaseMessage], **kwargs: Any) -> str:
     This routing function demostrates the ability to access messages in the
     prompt.
     """
-    return "gpt-3_5"
+    import tiktoken
+    encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+
+    # combine messages into a single string
+    prompt = ""
+    for message in messages:
+        prompt += f"{message.type}: {message.content}\n"
+
+    # count tokens
+    num_tokens = len(encoding.encode(prompt))
+    
+    return "gpt-3_5" if num_tokens <= 4096  else "gpt-4"
 
 # initialize chat models
 gpt_4_model = ChatOpenAI(model="gpt-4")
@@ -38,7 +48,7 @@ chat_custom_router_model = ChatCustomRouter(
         "gpt-3_5": gpt_3_5_model,
     },
     default_model="gpt-4",
-    routing_func=random_selection,
+    routing_func=evaluate_messages,
 )
 
 # create chat prompt

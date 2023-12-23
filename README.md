@@ -111,6 +111,28 @@ chat_not_diamond = ChatNotDiamond(
 ```
 
 ## ChatCustomRouter
+The implementation of `ChatCustomRouter` demonstrates the ability to implement custom routing logic. For example, a routing function may count tokens, evaluate the current prompt against historical metrics, or call an external routing service.
+
+```python
+# define custom routing function
+def random_selection(messages: List[BaseMessage], **kwargs: Any) -> str:
+    """Randomly select a model from the available models."""
+    return random.choice(["gpt-4", "gpt-3_5"])
+
+# initialize chat models
+gpt_4_model = ChatOpenAI(model="gpt-4")
+gpt_3_5_model = ChatOpenAI(model="gpt-3.5-turbo")
+
+# specify all models that can be selected in the ChatCustomRouter instance
+chat_custom_router_model = ChatCustomRouter(
+    models={
+        "gpt-4": gpt_4_model,
+        "gpt-3_5": gpt_3_5_model,
+    },
+    default_model="gpt-4",
+    routing_func=random_selection,
+)
+```
 
 ## Running Examples
 

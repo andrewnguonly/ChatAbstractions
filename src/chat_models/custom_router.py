@@ -17,7 +17,7 @@ class ChatCustomRouter(BaseChatModel):
     """
     models: Dict[str, BaseChatModel]
     default_model: str
-    routing_func: Callable[[List[BaseMessage]], str]
+    routing_func: Callable[[List[BaseMessage], Any], str]
     
     @root_validator(pre=True)
     def validate_attrs(cls, values: Dict[str, Any]) -> Dict[str, Any]:
