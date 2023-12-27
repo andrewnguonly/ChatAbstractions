@@ -14,9 +14,15 @@ logger = logging.getLogger(__name__)
 class ChatDynamicParams(BaseChatModel):
     """Chat model abstraction that dynamically selects model parameters at
     runtime.
+
+    Supported model parameters:
+    - temperature
     """
     model: BaseChatModel
+    temp_min: float = 0.0
+    temp_max: float = 2.0
 
+    # TODO: validate that Ollama server is running
     _local_model: Ollama = Ollama(temperature=0)
 
     @property
@@ -58,4 +64,26 @@ class ChatDynamicParams(BaseChatModel):
     
     def _get_temperature(self, prompt: str) -> int:
         """Return optimal temperature based on prompt."""
-        return 0
+        local_model_prompt = (
+            "Classify the following LLM prompt by determining if it requires "
+            "a factually correct response, if it requires an open-ended "
+            "creative response, or if it requires a mix of both factual "
+            "accuracy and open-ended creativity. Return only one of the "
+            "following responses without any formatting: accuracy, "
+            "creativity, or mix\n"
+            "\n"
+            f"Prompt: `{prompt}`"
+        )
+        response = self._local_model(local_model_prompt)
+        response = response.lower()
+
+        # convert classification to temperature
+        if "accuracy" in response:
+            return self.temp_min
+        elif "creativity" in response:
+            return self.temp_max
+        elif "mix" in response:
+            return (self.temp_min + self.temp_max) / 2
+        else:
+            # return minimum temperature to be conservative
+            return self.temp_min
