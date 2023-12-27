@@ -1,14 +1,20 @@
+import json
 import logging
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
+import requests
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.base import BaseChatModel
+from langchain.pydantic_v1 import root_validator
 from langchain.llms.ollama import Ollama
 from langchain.schema import ChatResult
 from langchain.schema.messages import BaseMessage
 
 
 logger = logging.getLogger(__name__)
+
+
+OLLAMA_MODEL = "mistral"
 
 
 class ChatDynamicParams(BaseChatModel):
@@ -22,8 +28,29 @@ class ChatDynamicParams(BaseChatModel):
     temp_min: float = 0.0
     temp_max: float = 2.0
 
-    # TODO: validate that Ollama server is running
-    _local_model: Ollama = Ollama(model="mistral", temperature=0)
+    _local_model: Ollama = Ollama(model=OLLAMA_MODEL, temperature=0)
+
+    @root_validator(pre=True)
+    def validate_attrs(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate class attributes."""
+        # validate that Ollama server is running
+        try:
+            response = requests.get("http://localhost:11434/api/tags")
+            models = json.loads(response.text)["models"]
+        except Exception:
+            raise ValueError("Ollama server is not available.")
+
+        # validate that Ollama mistral model is available
+        found_model = False
+        for model in models:
+            name = model["name"].split(":")[0]
+            if name == OLLAMA_MODEL:
+                found_model = True
+
+        if not found_model:
+            raise ValueError(f"Ollama {OLLAMA_MODEL} model not found.")
+
+        return values
 
     @property
     def _llm_type(self) -> str:
