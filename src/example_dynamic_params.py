@@ -16,13 +16,13 @@ chat_dynamic_params = ChatDynamicParams(
 
 # prompts
 prompt_accuracy = "What's 1+1?"
-prompt_creativity = "Write a poem about the positive consequences of an AI-powered Utopia"
+prompt_creativity = "Write a poem about a prince saving a princess from a dragon"
 prompt_mix = "Summarize the ideas of capitalism and compare and contrast it with some new emerging ideologies"
 
 # create chat prompt
 chat_prompt = ChatPromptTemplate.from_messages([
     ("system", "You are a helpful assistant"),
-    ("human", f"{prompt_accuracy}"),
+    ("human", f"{prompt_mix}"),
 ])
 
 # construct chain

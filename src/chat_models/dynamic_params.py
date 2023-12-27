@@ -23,7 +23,7 @@ class ChatDynamicParams(BaseChatModel):
     temp_max: float = 2.0
 
     # TODO: validate that Ollama server is running
-    _local_model: Ollama = Ollama(temperature=0)
+    _local_model: Ollama = Ollama(model="mistral", temperature=0)
 
     @property
     def _llm_type(self) -> str:
@@ -41,7 +41,9 @@ class ChatDynamicParams(BaseChatModel):
         prompt = self._get_prompt(messages)
 
         if hasattr(self.model, "temperature"):
-            self.model.temperature = self._get_temperature(prompt)
+            new_temp = self._get_temperature(prompt)
+            logger.info(f"Changing model temperature from {self.model.temperature} to {new_temp}")
+            self.model.temperature = new_temp
 
         return self.model._generate(
             messages=messages,
@@ -66,23 +68,25 @@ class ChatDynamicParams(BaseChatModel):
         """Return optimal temperature based on prompt."""
         local_model_prompt = (
             "Classify the following LLM prompt by determining if it requires "
-            "a factually correct response, if it requires an open-ended "
-            "creative response, or if it requires a mix of both factual "
-            "accuracy and open-ended creativity. Return only one of the "
-            "following responses without any formatting: accuracy, "
-            "creativity, or mix\n"
+            "a factually correct response, if it requires a creative response, "
+            "or if it requires a mix of both factual accuracy and creativity. "
+            "Return only one of the following responses without any formatting: "
+            "`accuracy`, `creativity`, or `mix`\n"
             "\n"
             f"Prompt: `{prompt}`"
         )
         response = self._local_model(local_model_prompt)
-        response = response.lower()
+
+        # Retrieve the first token from response. This is typically the
+        # classification value.
+        first_token = response.split()[0].lower()
 
         # convert classification to temperature
-        if "accuracy" in response:
+        if "accuracy" in first_token:
             return self.temp_min
-        elif "creativity" in response:
+        elif "creativity" in first_token:
             return self.temp_max
-        elif "mix" in response:
+        elif "mix" in first_token:
             return (self.temp_min + self.temp_max) / 2
         else:
             # return minimum temperature to be conservative

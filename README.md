@@ -134,6 +134,19 @@ chat_custom_router_model = ChatCustomRouter(
 )
 ```
 
+## ChatDynamicParams
+
+The implementation of `ChatDynamicParams` demonstrates the ability to dynamically set model parameters (e.g. temperature) based on the prompt. Different prompts require different values for model parameters. Tuning and optimizing model parameters may result in more desirable responses. The implementation leverages a local LLM powered by [Ollama](https://ollama.ai/).
+
+```python
+# specify parameter constraints for ChatDynamicParams
+chat_dynamic_params = ChatDynamicParams(
+    model=ChatOpenAI(model="gpt-3.5-turbo"),
+    temp_min=0.0,
+    temp_max=1.0,
+)
+```
+
 ## Running Examples
 
 Run the following command.
