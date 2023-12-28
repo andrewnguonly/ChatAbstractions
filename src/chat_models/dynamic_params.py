@@ -69,7 +69,7 @@ class ChatDynamicParams(BaseChatModel):
 
         if hasattr(self.model, "temperature"):
             new_temp = self._get_temperature(prompt)
-            logger.error(
+            logger.info(
                 "Changing model temperature from "
                 f"{getattr(self.model, 'temperature')} to {new_temp}"
             )
