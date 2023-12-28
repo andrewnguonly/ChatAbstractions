@@ -69,8 +69,11 @@ class ChatDynamicParams(BaseChatModel):
 
         if hasattr(self.model, "temperature"):
             new_temp = self._get_temperature(prompt)
-            logger.info(f"Changing model temperature from {self.model.temperature} to {new_temp}")
-            self.model.temperature = new_temp
+            logger.error(
+                "Changing model temperature from "
+                f"{getattr(self.model, 'temperature')} to {new_temp}"
+            )
+            setattr(self.model, "temperature", new_temp)
 
         return self.model._generate(
             messages=messages,
@@ -116,5 +119,5 @@ class ChatDynamicParams(BaseChatModel):
         elif "mix" in first_token:
             return (self.temp_min + self.temp_max) / 2
         else:
-            # return minimum temperature to be conservative
-            return self.temp_min
+            # default to original model temperature
+            return getattr(self.model, "temperature")
