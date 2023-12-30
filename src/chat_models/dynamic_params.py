@@ -5,7 +5,8 @@ from typing import Any, Dict, List, Optional
 import requests
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.base import BaseChatModel
-from langchain.pydantic_v1 import root_validator
+from langchain.chat_models.openai import ChatOpenAI
+from langchain.pydantic_v1 import Field, root_validator
 from langchain.llms.ollama import Ollama
 from langchain.schema import ChatResult
 from langchain.schema.messages import BaseMessage
@@ -22,17 +23,25 @@ class ChatDynamicParams(BaseChatModel):
     runtime.
 
     Supported model parameters:
-    - temperature
+    - temperature (temp)
+    - frequency penalty (fp)
     """
     model: BaseChatModel
-    temp_min: float = 0.0
-    temp_max: float = 2.0
+    temp_min: float = Field(default=0.0, ge=0.0, le=2.0)
+    temp_max: float = Field(default=2.0, ge=0.0, le=2.0)
+    fp_min: float = Field(default=-2.0, ge=-2.0, le=2.0)
+    fp_max: float = Field(default=2.0, ge=-2.0, le=2.0)
 
     _local_model: Ollama = Ollama(model=OLLAMA_MODEL, temperature=0)
 
     @root_validator(pre=True)
     def validate_attrs(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         """Validate class attributes."""
+        temp_min = values.get("temp_min", 0.0)
+        temp_max = values.get("temp_max", 2.0)
+        fp_min = values.get("fp_min", -2.0)
+        fp_max = values.get("fp_max", 2.0)
+
         # validate that Ollama server is running
         try:
             response = requests.get("http://localhost:11434/api/tags")
@@ -49,6 +58,14 @@ class ChatDynamicParams(BaseChatModel):
 
         if not found_model:
             raise ValueError(f"Ollama {OLLAMA_MODEL} model not found.")
+        
+        # validate temperature
+        if temp_min > temp_max:
+            raise ValueError("temp_min must be less than temp_max.")
+        
+        # validate frequency penalty
+        if fp_min > fp_max:
+            raise ValueError("fp_min must be less than fp_max.")
 
         return values
 
@@ -67,6 +84,7 @@ class ChatDynamicParams(BaseChatModel):
         """Reset parameters of model based on messages."""
         prompt = self._get_prompt(messages)
 
+        # check if model supports temperature
         if hasattr(self.model, "temperature"):
             new_temp = self._get_temperature(prompt)
             logger.info(
@@ -74,6 +92,15 @@ class ChatDynamicParams(BaseChatModel):
                 f"{getattr(self.model, 'temperature')} to {new_temp}"
             )
             setattr(self.model, "temperature", new_temp)
+
+        # check if model supports frequency_penalty
+        if isinstance(self.model, ChatOpenAI):
+            new_fp = self._get_frequency_penalty(prompt)
+            logger.info(
+                "Changing model frequency_penalty from "
+                f"{self.model.model_kwargs.get('frequency_penalty', 0)} to {new_fp}"
+            )
+            self.model.model_kwargs["frequency_penalty"] = new_fp
 
         return self.model._generate(
             messages=messages,
@@ -94,7 +121,7 @@ class ChatDynamicParams(BaseChatModel):
         # return the last message if no human message is found
         return messages[-1].content
     
-    def _get_temperature(self, prompt: str) -> int:
+    def _get_temperature(self, prompt: str) -> float:
         """Return optimal temperature based on prompt."""
         local_model_prompt = (
             "Classify the following LLM prompt by determining if it requires "
@@ -121,3 +148,7 @@ class ChatDynamicParams(BaseChatModel):
         else:
             # default to original model temperature
             return getattr(self.model, "temperature")
+
+    def _get_frequency_penalty(self, prompt: str) -> float:
+        """Return optimal frequency penalty based on prompt."""
+        return 0
