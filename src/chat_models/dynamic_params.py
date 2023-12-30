@@ -98,7 +98,8 @@ class ChatDynamicParams(BaseChatModel):
             new_fp = self._get_frequency_penalty(prompt)
             logger.info(
                 "Changing model frequency_penalty from "
-                f"{self.model.model_kwargs.get('frequency_penalty', 0)} to {new_fp}"
+                f"{self.model.model_kwargs.get('frequency_penalty', 0.0)} "
+                f"to {new_fp}"
             )
             self.model.model_kwargs["frequency_penalty"] = new_fp
 
@@ -151,4 +152,31 @@ class ChatDynamicParams(BaseChatModel):
 
     def _get_frequency_penalty(self, prompt: str) -> float:
         """Return optimal frequency penalty based on prompt."""
-        return 0
+        local_model_prompt = (
+            "Classify the following LLM prompt by determining if it requires "
+            "a focused response, if it requires an open-ended response, "
+            "or if it requires a mix of both focus and open-endedness. "
+            "Return only one of the following responses without any formatting: "
+            "`focus`, `open-ended`, or `mix`\n"
+            "\n"
+            f"Prompt: `{prompt}`"
+        )
+        response = self._local_model(local_model_prompt)
+
+        # Retrieve the first token from response. This is typically the
+        # classification value.
+        first_token = response.split()[0].lower()
+
+        # convert classification to frequency_penalty
+        if "focus" in first_token:
+            return self.fp_min
+        elif "open-ended" in first_token:
+            return self.fp_max
+        elif "mix" in first_token:
+            return (self.fp_min + self.fp_max) / 2
+        else:
+            # default to original model frequency_penalty
+            if isinstance(self.model, ChatOpenAI):
+                return self.model.model_kwargs.get("frequency_penalty", 0.0)
+            else:
+                return 0.0
