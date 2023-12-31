@@ -81,7 +81,11 @@ class ChatDynamicParams(BaseChatModel):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> ChatResult:
-        """Reset parameters of model based on messages."""
+        """Reset parameters of model based on messages.
+        
+        Newly set parameters are retrieved from the model's _default_params
+        property and passed to the underlying client.
+        """
         prompt = self._get_prompt(messages)
 
         # check if model supports temperature
