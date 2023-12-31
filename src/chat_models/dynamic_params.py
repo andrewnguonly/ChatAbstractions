@@ -24,13 +24,13 @@ class ChatDynamicParams(BaseChatModel):
 
     Supported model parameters:
     - temperature (temp)
-    - frequency penalty (fp)
+    - presence penalty (pp)
     """
     model: BaseChatModel
     temp_min: float = Field(default=0.0, ge=0.0, le=2.0)
     temp_max: float = Field(default=2.0, ge=0.0, le=2.0)
-    fp_min: float = Field(default=-2.0, ge=-2.0, le=2.0)
-    fp_max: float = Field(default=2.0, ge=-2.0, le=2.0)
+    pp_min: float = Field(default=-2.0, ge=-2.0, le=2.0)
+    pp_max: float = Field(default=2.0, ge=-2.0, le=2.0)
 
     _local_model: Ollama = Ollama(model=OLLAMA_MODEL, temperature=0)
 
@@ -39,8 +39,8 @@ class ChatDynamicParams(BaseChatModel):
         """Validate class attributes."""
         temp_min = values.get("temp_min", 0.0)
         temp_max = values.get("temp_max", 2.0)
-        fp_min = values.get("fp_min", -2.0)
-        fp_max = values.get("fp_max", 2.0)
+        pp_min = values.get("pp_min", -2.0)
+        pp_max = values.get("pp_max", 2.0)
 
         # validate that Ollama server is running
         try:
@@ -63,9 +63,9 @@ class ChatDynamicParams(BaseChatModel):
         if temp_min > temp_max:
             raise ValueError("temp_min must be less than temp_max.")
         
-        # validate frequency penalty
-        if fp_min > fp_max:
-            raise ValueError("fp_min must be less than fp_max.")
+        # validate presence penalty
+        if pp_min > pp_max:
+            raise ValueError("pp_min must be less than pp_max.")
 
         return values
 
@@ -97,15 +97,15 @@ class ChatDynamicParams(BaseChatModel):
             )
             setattr(self.model, "temperature", new_temp)
 
-        # check if model supports frequency_penalty
+        # check if model supports presence penalty
         if isinstance(self.model, ChatOpenAI):
-            new_fp = self._get_frequency_penalty(prompt)
+            new_fp = self._get_presence_penalty(prompt)
             logger.info(
-                "Changing model frequency_penalty from "
-                f"{self.model.model_kwargs.get('frequency_penalty', 0.0)} "
+                "Changing model presence_penalty from "
+                f"{self.model.model_kwargs.get('presence_penalty', 0.0)} "
                 f"to {new_fp}"
             )
-            self.model.model_kwargs["frequency_penalty"] = new_fp
+            self.model.model_kwargs["presence_penalty"] = new_fp
 
         return self.model._generate(
             messages=messages,
@@ -154,8 +154,8 @@ class ChatDynamicParams(BaseChatModel):
             # default to original model temperature
             return getattr(self.model, "temperature")
 
-    def _get_frequency_penalty(self, prompt: str) -> float:
-        """Return optimal frequency penalty based on prompt."""
+    def _get_presence_penalty(self, prompt: str) -> float:
+        """Return optimal presence penalty based on prompt."""
         local_model_prompt = (
             "Classify the following LLM prompt by determining if it requires "
             "a focused response, if it requires an open-ended response, "
@@ -171,16 +171,16 @@ class ChatDynamicParams(BaseChatModel):
         # classification value.
         first_token = response.split()[0].lower()
 
-        # convert classification to frequency_penalty
+        # convert classification to presence penalty
         if "focus" in first_token:
-            return self.fp_min
+            return self.pp_min
         elif "open-ended" in first_token:
-            return self.fp_max
+            return self.pp_max
         elif "mix" in first_token:
-            return (self.fp_min + self.fp_max) / 2
+            return (self.pp_min + self.pp_max) / 2
         else:
-            # default to original model frequency_penalty
+            # default to original model presence penalty
             if isinstance(self.model, ChatOpenAI):
-                return self.model.model_kwargs.get("frequency_penalty", 0.0)
+                return self.model.model_kwargs.get("presence_penalty", 0.0)
             else:
                 return 0.0

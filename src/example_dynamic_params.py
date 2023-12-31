@@ -12,7 +12,7 @@ set_debug(True)
 chat_dynamic_params = ChatDynamicParams(
     model=ChatOpenAI(model="gpt-3.5-turbo"),
     temp_max=1.0,
-    fp_min=-0.0,
+    pp_min=-0.0,
 )
 
 # prompts
