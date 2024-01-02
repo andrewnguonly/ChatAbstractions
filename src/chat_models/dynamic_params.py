@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 OLLAMA_MODEL = "mistral"
 
-# { "class_name": (<min>, <max>, <default>) }
+# { "class_name": (<min>, <max>) }
 TEMP_RANGES = {
-    ChatOpenAI.__name__: (0.0, 2.0, 0.7),
-    ChatAnthropic.__name__: (0.0, 1.0, 1.0),
+    ChatOpenAI.__name__: (0.0, 2.0),
+    ChatAnthropic.__name__: (0.0, 1.0),
 }
 
 class ChatDynamicParams(BaseChatModel):
@@ -33,8 +33,8 @@ class ChatDynamicParams(BaseChatModel):
     - presence penalty (pp)
     """
     model: Union[ChatAnthropic, ChatOpenAI]
-    temp_min: float = Field(default=0.0, ge=0.0, le=2.0)
-    temp_max: float = Field(default=2.0, ge=0.0, le=2.0)
+    temp_min: float = 0.0
+    temp_max: float = 1.0
     pp_min: float = Field(default=-2.0, ge=-2.0, le=2.0)
     pp_max: float = Field(default=2.0, ge=-2.0, le=2.0)
 
