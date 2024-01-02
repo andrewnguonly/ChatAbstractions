@@ -1,9 +1,10 @@
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 from langchain.callbacks.manager import CallbackManagerForLLMRun
+from langchain.chat_models.anthropic import ChatAnthropic
 from langchain.chat_models.base import BaseChatModel
 from langchain.chat_models.openai import ChatOpenAI
 from langchain.pydantic_v1 import Field, root_validator
@@ -17,6 +18,11 @@ logger = logging.getLogger(__name__)
 
 OLLAMA_MODEL = "mistral"
 
+# { "class_name": (<min>, <max>, <default>) }
+TEMP_RANGES = {
+    ChatOpenAI.__name__: (0.0, 2.0, 0.7),
+    ChatAnthropic.__name__: (0.0, 1.0, 1.0),
+}
 
 class ChatDynamicParams(BaseChatModel):
     """Chat model abstraction that dynamically selects model parameters at
@@ -26,7 +32,7 @@ class ChatDynamicParams(BaseChatModel):
     - temperature (temp)
     - presence penalty (pp)
     """
-    model: BaseChatModel
+    model: Union[ChatAnthropic, ChatOpenAI]
     temp_min: float = Field(default=0.0, ge=0.0, le=2.0)
     temp_max: float = Field(default=2.0, ge=0.0, le=2.0)
     pp_min: float = Field(default=-2.0, ge=-2.0, le=2.0)
@@ -37,6 +43,7 @@ class ChatDynamicParams(BaseChatModel):
     @root_validator(pre=True)
     def validate_attrs(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         """Validate class attributes."""
+        model = values.get("model")
         temp_min = values.get("temp_min", 0.0)
         temp_max = values.get("temp_max", 2.0)
         pp_min = values.get("pp_min", -2.0)
@@ -45,21 +52,27 @@ class ChatDynamicParams(BaseChatModel):
         # validate that Ollama server is running
         try:
             response = requests.get("http://localhost:11434/api/tags")
-            models = json.loads(response.text)["models"]
+            tags = json.loads(response.text)["models"]
         except Exception:
             raise ValueError("Ollama server is not available.")
 
         # validate that Ollama mistral model is available
         found_model = False
-        for model in models:
-            name = model["name"].split(":")[0]
-            if name == OLLAMA_MODEL:
+        for tag in tags:
+            model_name = tag["name"].split(":")[0]
+            if model_name == OLLAMA_MODEL:
                 found_model = True
 
         if not found_model:
             raise ValueError(f"Ollama {OLLAMA_MODEL} model not found.")
         
         # validate temperature
+        temp_range = TEMP_RANGES.get(type(model).__name__)
+        if temp_min < temp_range[0] or temp_max > temp_range[1]:
+            raise ValueError(
+                f"temp_min must be greater than or equal to {temp_range[0]} "
+                f"and temp_max must be less than or equal to {temp_range[1]}."
+            )
         if temp_min > temp_max:
             raise ValueError("temp_min must be less than temp_max.")
         
