@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import requests
 from langchain.callbacks.manager import CallbackManagerForLLMRun
@@ -32,7 +32,7 @@ class ChatDynamicParams(BaseChatModel):
     - temperature (temp)
     - presence penalty (pp)
     """
-    model: Union[ChatAnthropic, ChatOpenAI]
+    model: BaseChatModel
     temp_min: float = 0.0
     temp_max: float = 1.0
     pp_min: float = Field(default=-2.0, ge=-2.0, le=2.0)
@@ -68,7 +68,9 @@ class ChatDynamicParams(BaseChatModel):
         
         # validate temperature
         temp_range = TEMP_RANGES.get(type(model).__name__)
-        if temp_min < temp_range[0] or temp_max > temp_range[1]:
+        if (temp_range and
+            (temp_min < temp_range[0] or temp_max > temp_range[1])
+        ):
             raise ValueError(
                 f"temp_min must be greater than or equal to {temp_range[0]} "
                 f"and temp_max must be less than or equal to {temp_range[1]}."

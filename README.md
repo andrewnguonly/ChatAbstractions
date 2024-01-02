@@ -142,8 +142,8 @@ The implementation of `ChatDynamicParams` demonstrates the ability to dynamicall
 # specify parameter constraints for ChatDynamicParams
 chat_dynamic_params = ChatDynamicParams(
     model=ChatOpenAI(model="gpt-3.5-turbo"),
-    temp_min=0.0,
     temp_max=1.0,
+    pp_min=0.5,
 )
 ```
 
