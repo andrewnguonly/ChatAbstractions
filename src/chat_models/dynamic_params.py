@@ -24,6 +24,15 @@ TEMP_RANGES = {
     ChatAnthropic.__name__: (0.0, 1.0),
 }
 
+MAX_TOKEN_LIMITS = {
+    "gpt-3.5-turbo": 4096,
+    "gpt-3.5-turbo-16k": 16384,
+    "gpt-4": 8192,
+    "gpt-4-32k": 32768,
+    "claude-2.0": 100000,
+    "claude-2.1": 200000,
+}
+
 class ChatDynamicParams(BaseChatModel):
     """Chat model abstraction that dynamically selects model parameters at
     runtime.
@@ -31,12 +40,15 @@ class ChatDynamicParams(BaseChatModel):
     Supported model parameters:
     - temperature (temp)
     - presence penalty (pp)
+    - max tokens (tkn)
     """
     model: BaseChatModel
     temp_min: float = 0.0
     temp_max: float = 1.0
     pp_min: float = Field(default=-2.0, ge=-2.0, le=2.0)
     pp_max: float = Field(default=2.0, ge=-2.0, le=2.0)
+    tkn_min: int = 256
+    tkn_max: int = 1024
 
     _local_model: Ollama = Ollama(model=OLLAMA_MODEL, temperature=0)
 
@@ -122,6 +134,14 @@ class ChatDynamicParams(BaseChatModel):
             )
             self.model.model_kwargs["presence_penalty"] = new_fp
 
+        # check if model support max_tokens
+        if hasattr(self.model, "max_tokens"):
+            # OpenAI
+            pass
+        elif hasattr(self.model, "max_tokens_to_sample"):
+            # Anthropic
+            pass
+
         return self.model._generate(
             messages=messages,
             stop=stop,
@@ -199,3 +219,10 @@ class ChatDynamicParams(BaseChatModel):
                 return self.model.model_kwargs.get("presence_penalty", 0.0)
             else:
                 return 0.0
+
+    def _get_max_tokens(self, prompt: str) -> int:
+        """Return max_tokens value based on size of prompt and max token limit
+        for model.
+        """
+        return 0
+    
