@@ -25,11 +25,13 @@ TEMP_RANGES = {
     ChatAnthropic.__name__: (0.0, 1.0),
 }
 
+# Round down to multiple of 1000 to prevent accidentally exceeding
+# model's token limit. Counting tokens in a prompt is imprecise.
 MAX_TOKEN_LIMITS = {
-    "gpt-3.5-turbo": 4096,
-    "gpt-3.5-turbo-16k": 16384,
-    "gpt-4": 8192,
-    "gpt-4-32k": 32768,
+    "gpt-3.5-turbo": 4000,
+    "gpt-3.5-turbo-16k": 16000,
+    "gpt-4": 8000,
+    "gpt-4-32k": 32000,
     "claude-2.0": 100000,
     "claude-2.1": 200000,
 }
@@ -58,9 +60,11 @@ class ChatDynamicParams(BaseChatModel):
         """Validate class attributes."""
         model = values.get("model")
         temp_min = values.get("temp_min", 0.0)
-        temp_max = values.get("temp_max", 2.0)
+        temp_max = values.get("temp_max", 1.0)
         pp_min = values.get("pp_min", -2.0)
         pp_max = values.get("pp_max", 2.0)
+        tkn_min = values.get("tkn_min", 256)
+        tkn_max = values.get("tkn_max", 1024)
 
         # validate that Ollama server is running
         try:
@@ -94,6 +98,10 @@ class ChatDynamicParams(BaseChatModel):
         # validate presence penalty
         if pp_min > pp_max:
             raise ValueError("pp_min must be less than pp_max.")
+        
+        # validate max tokens
+        if tkn_min > tkn_max:
+            raise ValueError("tkn_min must be less than tkn_max.")
 
         return values
 
