@@ -3,6 +3,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import requests
+import tiktoken
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.anthropic import ChatAnthropic
 from langchain.chat_models.base import BaseChatModel
@@ -24,6 +25,17 @@ TEMP_RANGES = {
     ChatAnthropic.__name__: (0.0, 1.0),
 }
 
+# Round down to multiple of 1000 to prevent accidentally exceeding
+# model's token limit. Counting tokens in a prompt is imprecise.
+MAX_TOKEN_LIMITS = {
+    "gpt-3.5-turbo": 4000,
+    "gpt-3.5-turbo-16k": 16000,
+    "gpt-4": 8000,
+    "gpt-4-32k": 32000,
+    "claude-2.0": 100000,
+    "claude-2.1": 200000,
+}
+
 class ChatDynamicParams(BaseChatModel):
     """Chat model abstraction that dynamically selects model parameters at
     runtime.
@@ -31,12 +43,15 @@ class ChatDynamicParams(BaseChatModel):
     Supported model parameters:
     - temperature (temp)
     - presence penalty (pp)
+    - max tokens (tkn)
     """
     model: BaseChatModel
     temp_min: float = 0.0
     temp_max: float = 1.0
     pp_min: float = Field(default=-2.0, ge=-2.0, le=2.0)
     pp_max: float = Field(default=2.0, ge=-2.0, le=2.0)
+    tkn_min: int = 256
+    tkn_max: int = 1024
 
     _local_model: Ollama = Ollama(model=OLLAMA_MODEL, temperature=0)
 
@@ -45,9 +60,11 @@ class ChatDynamicParams(BaseChatModel):
         """Validate class attributes."""
         model = values.get("model")
         temp_min = values.get("temp_min", 0.0)
-        temp_max = values.get("temp_max", 2.0)
+        temp_max = values.get("temp_max", 1.0)
         pp_min = values.get("pp_min", -2.0)
         pp_max = values.get("pp_max", 2.0)
+        tkn_min = values.get("tkn_min", 256)
+        tkn_max = values.get("tkn_max", 1024)
 
         # validate that Ollama server is running
         try:
@@ -81,6 +98,10 @@ class ChatDynamicParams(BaseChatModel):
         # validate presence penalty
         if pp_min > pp_max:
             raise ValueError("pp_min must be less than pp_max.")
+        
+        # validate max tokens
+        if tkn_min > tkn_max:
+            raise ValueError("tkn_min must be less than tkn_max.")
 
         return values
 
@@ -122,6 +143,25 @@ class ChatDynamicParams(BaseChatModel):
             )
             self.model.model_kwargs["presence_penalty"] = new_fp
 
+        # check if model support max_tokens
+        if hasattr(self.model, "max_tokens"):
+            # OpenAI
+            new_tkn = self._get_max_tokens(messages)
+            logger.info(
+                "Changing model max_tokens from "
+                f"{getattr(self.model, 'max_tokens')} to {new_tkn}"
+            )
+            setattr(self.model, "max_tokens", new_tkn)
+
+        elif hasattr(self.model, "max_tokens_to_sample"):
+            # Anthropic
+            new_tkn = self._get_max_tokens(messages)
+            logger.info(
+                "Changing model max_tokens_to_sample from "
+                f"{getattr(self.model, 'max_tokens_to_sample')} to {new_tkn}"
+            )
+            setattr(self.model, "max_tokens_to_sample", new_tkn)
+
         return self.model._generate(
             messages=messages,
             stop=stop,
@@ -140,6 +180,10 @@ class ChatDynamicParams(BaseChatModel):
             
         # return the last message if no human message is found
         return messages[-1].content
+    
+    def _get_msgs_as_str(self, messages: List[BaseMessage]) -> str:
+        """Convert list of messages to string."""
+        return "".join([message.content for message in messages])
     
     def _get_temperature(self, prompt: str) -> float:
         """Return optimal temperature based on prompt."""
@@ -199,3 +243,38 @@ class ChatDynamicParams(BaseChatModel):
                 return self.model.model_kwargs.get("presence_penalty", 0.0)
             else:
                 return 0.0
+
+    def _get_max_tokens(self, messages: List[BaseMessage]) -> int:
+        """Return max_tokens value based on size of prompt and max token limit
+        for model.
+        """
+        msgs_as_str = self._get_msgs_as_str(messages)
+
+        if isinstance(self.model, ChatOpenAI):
+            max_token_limit = MAX_TOKEN_LIMITS.get(self.model.model_name)
+
+            # get token count of messages
+            encoding = tiktoken.encoding_for_model(self.model.model_name)
+            msgs_tkn_cnt = len(encoding.encode(msgs_as_str))
+
+        elif isinstance(self.model, ChatAnthropic):
+            max_token_limit = MAX_TOKEN_LIMITS.get(self.model.model)
+
+            # get token count of messages
+            msgs_tkn_cnt = self.model.get_num_tokens_from_messages(messages)
+        else:
+            # unsupported model, return any value
+            return 256
+        
+        # request_max_tokens is the optimal number of tokens to request
+        requested_max_tokens = max_token_limit - msgs_tkn_cnt
+
+        # Return request_max_tokens if it's in the specified range (between
+        # tkn_min and tkn_max). Return tkn_max, if request_max_tokens is
+        # greater than tkn_max. Return tkn_min, if request_max_tokens is
+        # less than tkn_min.
+        #
+        # Warning: If tkn_min is returned, the total token count for the
+        # request may still exceed the model's max token limit.
+        return min(self.tkn_max, max(self.tkn_min, requested_max_tokens))
+    
