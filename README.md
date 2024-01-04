@@ -136,7 +136,7 @@ chat_custom_router_model = ChatCustomRouter(
 
 ## ChatDynamicParams
 
-The implementation of `ChatDynamicParams` demonstrates the ability to dynamically set model parameters (e.g. temperature, presence_penalty, max_tokens) based on the prompt. Different prompts require different values for model parameters. Tuning and optimizing model parameters may result in more desirable responses. The implementation leverages a local LLM powered by [Ollama](https://ollama.ai/).
+The implementation of `ChatDynamicParams` demonstrates the ability to dynamically set model parameters (e.g. `temperature`, `presence_penalty`, `max_tokens`) based on the prompt. Different prompts require different values for model parameters. Tuning and optimizing model parameters may result in more desirable responses. The implementation leverages a local LLM powered by [Ollama](https://ollama.ai/).
 
 ```python
 # specify parameter constraints for ChatDynamicParams
