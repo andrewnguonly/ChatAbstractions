@@ -3,6 +3,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import requests
+import tiktoken
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.anthropic import ChatAnthropic
 from langchain.chat_models.base import BaseChatModel
@@ -137,10 +138,21 @@ class ChatDynamicParams(BaseChatModel):
         # check if model support max_tokens
         if hasattr(self.model, "max_tokens"):
             # OpenAI
-            pass
+            new_tkn = self._get_max_tokens(messages)
+            logger.info(
+                "Changing model max_tokens from "
+                f"{getattr(self.model, 'max_tokens')} to {new_tkn}"
+            )
+            setattr(self.model, "max_tokens", new_tkn)
+
         elif hasattr(self.model, "max_tokens_to_sample"):
             # Anthropic
-            pass
+            new_tkn = self._get_max_tokens(messages)
+            logger.info(
+                "Changing model max_tokens_to_sample from "
+                f"{getattr(self.model, 'max_tokens_to_sample')} to {new_tkn}"
+            )
+            setattr(self.model, "max_tokens_to_sample", new_tkn)
 
         return self.model._generate(
             messages=messages,
@@ -160,6 +172,10 @@ class ChatDynamicParams(BaseChatModel):
             
         # return the last message if no human message is found
         return messages[-1].content
+    
+    def _get_msgs_as_str(self, messages: List[BaseMessage]) -> str:
+        """Convert list of messages to string."""
+        return "".join([message.content for message in messages])
     
     def _get_temperature(self, prompt: str) -> float:
         """Return optimal temperature based on prompt."""
@@ -220,9 +236,37 @@ class ChatDynamicParams(BaseChatModel):
             else:
                 return 0.0
 
-    def _get_max_tokens(self, prompt: str) -> int:
+    def _get_max_tokens(self, messages: List[BaseMessage]) -> int:
         """Return max_tokens value based on size of prompt and max token limit
         for model.
         """
-        return 0
+        msgs_as_str = self._get_msgs_as_str(messages)
+
+        if isinstance(self.model, ChatOpenAI):
+            max_token_limit = MAX_TOKEN_LIMITS.get(self.model.model_name)
+
+            # get token count of messages
+            encoding = tiktoken.encoding_for_model(self.model.model_name)
+            msgs_tkn_cnt = len(encoding.encode(msgs_as_str))
+
+        elif isinstance(self.model, ChatAnthropic):
+            max_token_limit = MAX_TOKEN_LIMITS.get(self.model.model)
+
+            # get token count of messages
+            msgs_tkn_cnt = self.model.get_num_tokens_from_messages(messages)
+        else:
+            # unsupported model, return any value
+            return 256
+        
+        # request_max_tokens is the optimal number of tokens to request
+        requested_max_tokens = max_token_limit - msgs_tkn_cnt
+
+        # Return request_max_tokens if it's in the specified range (between
+        # tkn_min and tkn_max). Return tkn_max, if request_max_tokens is
+        # greater than tkn_max. Return tkn_min, if request_max_tokens is
+        # less than tkn_min.
+        #
+        # Warning: If tkn_min is returned, the total token count for the
+        # request may still exceed the model's max token limit.
+        return min(self.tkn_max, max(self.tkn_min, requested_max_tokens))
     
