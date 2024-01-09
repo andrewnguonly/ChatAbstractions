@@ -51,7 +51,7 @@ chat_dynamic_model = ChatDynamic(
 ```
 
 ## ChatLoadBalance
-The implementation of `ChatLoadBalance` demonstrates the ability to select a method of load balancing (random, round robin, least rate limited) between LLM models. In the event of rate limting or peak usage times, this functionality may be desirable.
+The implementation of `ChatLoadBalance` demonstrates the ability to select a method of load balancing (random, round robin, least rate limited) between LLM models. In the event of rate limiting or peak usage times, this functionality may be desirable.
 
 ```python
 # initialize chat models
