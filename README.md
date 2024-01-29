@@ -50,6 +50,8 @@ chat_dynamic_model = ChatDynamic(
 )
 ```
 
+Reading: [Dynamic Failover and Load Balancing LLMs With LangChain](https://medium.com/@andrewnguonly/dynamic-failover-and-load-balancing-llms-with-langchain-e930a094be61)
+
 ## ChatLoadBalance
 The implementation of `ChatLoadBalance` demonstrates the ability to select a method of load balancing (random, round robin, least rate limited) between LLM models. In the event of rate limiting or peak usage times, this functionality may be desirable.
 
@@ -64,6 +66,8 @@ chat_load_balance_model = ChatLoadBalance(
     load_balance_type=1,  # 0 - random, 1 - round robin, 2 - least rate limited
 )
 ```
+
+Reading: [Dynamic Failover and Load Balancing LLMs With LangChain](https://medium.com/@andrewnguonly/dynamic-failover-and-load-balancing-llms-with-langchain-e930a094be61)
 
 ## ChatChaos
 The implementation of `ChatChaos` demonstrates the ability to substitute normal LLM behavior with chaotic behavior. The purpose of this abstraction is to promote the [Principles of Chaos Engineering](https://principlesofchaos.org/) in the context of LLM applications. This abstraction is inspired by [Netflix's Chaos Monkey](https://github.com/Netflix/chaosmonkey).
@@ -85,6 +89,8 @@ chat_chaos_model = ChatChaos(
     hallucination_prompt="Write a poem about the Python programming language.",
 )
 ```
+
+Reading: [ChatChaos: The Good, the Bad, and the Ugly](https://medium.com/@andrewnguonly/chatchaos-the-good-the-bad-and-the-ugly-81f9612d7b00)
 
 ## ChatNotDiamond
 The implementation of `ChatNotDiamond` demonstrates the ability leverage [Not Diamond's](https://www.notdiamond.ai/) optimized LLM routing functionality.
@@ -147,6 +153,8 @@ chat_dynamic_params = ChatDynamicParams(
     tkn_max=1000,
 )
 ```
+
+Reading: [How Did We Get Stuck With Temperature and Frequency Penalty?](https://medium.com/@andrewnguonly/how-did-we-get-stuck-with-temperature-and-frequency-penalty-553c3e585544)
 
 ## Running Examples
 
